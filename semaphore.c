@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
+#include <pthread.h>
 
 
 //=================
@@ -35,6 +35,7 @@ typedef struct sem_t
 
 //=================
 //Globals
+int meow = 420;
 
 //Used as a handler for our queue of sems.
 semaphore* masterSem = NULL;
@@ -111,28 +112,31 @@ semaphore* findSemID(semaphore *head, int sem_ID)
 
 void deleteNode(semaphore **head_ref, semaphore *del)
 {
+
   /* base case */
+  /* If node to be deleted is head node */
+  /* Change next only if node to be deleted is NOT the last node */
+  /* Change prev only if node to be deleted is NOT the first node */
+  /* Finally, free the memory occupied by del*/
+
+/**
   if(*head_ref == NULL || del == NULL)
     return;
 
-  /* If node to be deleted is head node */
   if(*head_ref == del)
     *head_ref = del->next;
 
-  /* Change next only if node to be deleted is NOT the last node */
   if(del->next != NULL)
     del->next->prev = del->prev;
 
-  /* Change prev only if node to be deleted is NOT the first node */
   if(del->prev != NULL)
     del->prev->next = del->next;
 
-  /* Finally, free the memory occupied by del*/
- // free(del);
+
   return;
+
+**/
 }
-
-
 
 
 
@@ -150,12 +154,12 @@ void deleteNode(semaphore **head_ref, semaphore *del)
 void OS_InitSem(int sem_ID, int max_num)
 {
 	//Lay out memory for our semaphore
-	struct semaphore sem = (struct semaphore*)malloc(sizeof(int)); //<-- DONT FUCKING MALLOC
+	semaphore *sem = malloc(1024); //<-- DONT FUCKING MALLOC
 
 	//Initialize some sem data
 	sem->semID = sem_ID;
-	sem->lock = 0;
-	sem->prev = NULL;
+	sem->lock = 1;
+	//sem->prev = NULL;
 	sem->next = NULL;
 
 	//Throw our new semaphore in front of the list of sems.
@@ -170,13 +174,32 @@ void OS_Wait(int sem_ID)
 	semaphore *tmp;
 	tmp = findSemID(masterSem, sem_ID);
 
-	//decrement lcok
-	tmp->lock -= 1;
+	/**
+	 * PCB's should have their own little lock to indicate
+	 * that they are the one who can go next. like the while
+	 * busy loop below is still there but it would wait on the
+	 * value for that individual PCB. Then pick the PCB in the
+	 * list that is up for the CS and change its lock value.
+	 */
+	if(tmp->lock <= 0)
+	{
+		//decrement lock
+		tmp->lock -= 1;
 
-	//Check if lock is in use
-	while(tmp->lock < 0); //<- busy wait for lock
+		//Add process to back of list.
 
-	//Add the process to a list????
+
+		//Check if lock is in use
+		while(tmp->lock < 0){
+			sleep(1);//busy wait
+		}
+	}
+	else // lock was a 1 so no list
+	{
+		//decrement lock
+		tmp->lock -= 1;
+	}
+
 }
 
 
@@ -188,18 +211,44 @@ void OS_Signal(int sem_ID)
 	semaphore *sem;
 	sem = findSemID(masterSem, sem_ID);
 
-	//increment lcok
+	//increment lock
 	sem->lock += 1;
 
-	if(sem->lock <= 0)
-		return;
-	//Remove the process from a list????
+	//Remove the process from a list
+
+	return;
 }
 
 
+int test()
+{
+	OS_Wait(69);
+
+	meow -= 1;
+	puts("im all up in it dude");
+	sleep(3);
+
+	OS_Signal(69);
+
+	return 0;
+}
 
 
+void main()
+{
+	pthread_t	*threads;
 
+	OS_InitSem(69, 1);
 
+	puts("we have inited");
 
+	int i = 0;
+	threads = (pthread_t *)malloc(sizeof(pthread_t)*3);
+	for (i = 0; i < 3; i++)
+		pthread_create(&(threads[i]), NULL, &test, NULL);
+	for (i = 0; i < 3; i++)
+		pthread_join(threads[i], NULL);
 
+	return;
+
+}
