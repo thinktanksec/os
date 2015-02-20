@@ -17,14 +17,18 @@ PID pidIndex = 0;
 
 //=================
 //Structs
-
 typedef struct proc_t
 {
 	//Used to ID the process
 	PID PID; //<---- :o 
 
 	//Thread handle
-  	pthread_t *threads;
+  	pthread_t *thread;
+
+    //Lock
+
+    //Argument
+    int arg;
 	
 	//For semaphore queue
 	struct sem_t* next;
@@ -112,22 +116,26 @@ process* findPID(process *head, int PID)
 
 PID OS_Create(void (*f)(void), int arg, unsigned int level, unsigned int n)
 {
-	//Allocate and create 
-	process *proc = malloc(1024);
+    pidIndex += 1;
 
+    //Allocate and create 
+    process *proc = (pthread_t *)malloc(sizeof(pthread_t);
+
+    //Set its thread to operate on the given funciton pointer
+    pthread_create(&(proc->thread), NULL, &f, NULL);
 
 	//Set some fields
 	proc->PID = pidIndex;
 
-	//Set its thread to operate on the given funciton pointer.
-
+    //Set param
+    proc->arg = arg;
 
 	//Append to the appropriate queue
 	enqueueProcess(&sporadicHeadPCB, proc);
 
-	pidIndex += 1;
 	return pidIndex;
 }
+
 
 
 void OS_Terminate(void)
@@ -144,5 +152,27 @@ void OS_Yield(void)
 
 int  OS_GetParam(void)
 {
+
+}
+
+
+void main()
+{
+    pthread_t   *threads[3];
+
+    OS_InitSem(69, 1);
+
+    sem_init(&sem_name, 0, 1);
+    puts("we have inited");
+
+    int i = 0;
+    for (i = 0; i < 3; i++)
+        threads[i] = (pthread_t *)malloc(sizeof(pthread_t));
+    for (i = 0; i < 3; i++)
+        pthread_create(&(threads[i]), NULL, &test, i);
+    for (i = 0; i < 3; i++)
+        pthread_join(threads[i], NULL);
+
+    return;
 
 }
