@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 
 //=================
@@ -36,6 +37,7 @@ typedef struct sem_t
 //=================
 //Globals
 int meow = 420;
+sem_t sem_name;
 
 //Used as a handler for our queue of sems.
 semaphore* masterSem = NULL;
@@ -170,6 +172,8 @@ void OS_InitSem(int sem_ID, int max_num)
 
 void OS_Wait(int sem_ID)
 {
+	sem_wait(&sem_name);
+
 	//Create a handler for the requested sem
 	semaphore *tmp;
 	tmp = findSemID(masterSem, sem_ID);
@@ -183,22 +187,26 @@ void OS_Wait(int sem_ID)
 	 */
 	if(tmp->lock <= 0)
 	{
+		sem_post(&sem_name);
 		//decrement lock
-		tmp->lock -= 1;
+		//tmp->lock -= 1;
 
-		//Add process to back of list.
 
 
 		//Check if lock is in use
-		while(tmp->lock < 0){
-			sleep(1);//busy wait
+		while(tmp->lock <= 0){
+			//Add process to back of list.
+			sleep(3);//busy wait
 		}
 	}
 	else // lock was a 1 so no list
 	{
+		sem_post(&sem_name);
 		//decrement lock
 		tmp->lock -= 1;
 	}
+
+	printf("The lock value: %d\n", tmp->lock);
 
 }
 
@@ -207,6 +215,8 @@ void OS_Wait(int sem_ID)
 
 void OS_Signal(int sem_ID)
 {
+	sem_wait(&sem_name);
+
 	//Create a handler for the requested sem
 	semaphore *sem;
 	sem = findSemID(masterSem, sem_ID);
@@ -216,17 +226,26 @@ void OS_Signal(int sem_ID)
 
 	//Remove the process from a list
 
+
+	sem_post(&sem_name);
 	return;
 }
 
 
-int test()
+int test(int ID)
 {
+	printf("Thread #%d calling sem\n", ID);
 	OS_Wait(69);
 
 	meow -= 1;
 	puts("im all up in it dude");
-	sleep(3);
+
+	int x = 0;
+	while(x < 10)
+	{
+		sleep(1);
+		x++;
+	}
 
 	OS_Signal(69);
 
@@ -236,16 +255,18 @@ int test()
 
 void main()
 {
-	pthread_t	*threads;
+	pthread_t	*threads[3];
 
 	OS_InitSem(69, 1);
 
+	sem_init(&sem_name, 0, 1);
 	puts("we have inited");
 
 	int i = 0;
-	threads = (pthread_t *)malloc(sizeof(pthread_t)*3);
 	for (i = 0; i < 3; i++)
-		pthread_create(&(threads[i]), NULL, &test, NULL);
+		threads[i] = (pthread_t *)malloc(sizeof(pthread_t));
+	for (i = 0; i < 3; i++)
+		pthread_create(&(threads[i]), NULL, &test, i);
 	for (i = 0; i < 3; i++)
 		pthread_join(threads[i], NULL);
 
