@@ -1,8 +1,30 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #define MAXFIFO            16     /* max. # of FIFOs supported */
 #define FIFOSIZE           8      /* max. # of data elements per FIFO */
+#define INVALIDFIFO        0      /* an invalid FIFO descriptor */
+
+#define TRUE               1	  /* Boolean */
+#define FALSE              0      /* Boolean */
 
 typedef unsigned int BOOL;
 typedef unsigned int FIFO;
+
+
+/*
+
+	TODO: HANDLE WRITES OVERTAKING READS
+
+*/
+
 
 //================================================
 //				 STOP INTERRUPTS
@@ -10,7 +32,7 @@ typedef unsigned int FIFO;
 //=================
 //Structs
 
-typedef struct FIFO_t
+typedef struct FIFOstruct
 {
 	//Holds the FIFO descriptor used to
 	//ID this particular FIFO.
@@ -38,15 +60,15 @@ FIFO OS_InitFiFo()
 	FIFOstruct newFIFO;
 
 	//Make a unique descriptor (the address of the first element.)
-	newFIFO->descriptor = newFIFO->data;
-	newFIFO->indexW = 0;
-	newFIFO->indexR = 0;
+	newFIFO.descriptor = newFIFO.data; //WARNING: makes int from ptr wo cast
+	newFIFO.indexW = 0;
+	newFIFO.indexR = 0;
 
 	//initialize every element in the buffer to NULL
 	int i;
 	for(i = 0; i < MAXFIFO -1; i++)
 	{
-		newFIFO->data[i] = NULL;
+		newFIFO.data[i] = NULL; //WARNING: makes int from ptr wo cast
 	}
 
 	//Parse the master array, find a spot for new FIFO
@@ -54,23 +76,33 @@ FIFO OS_InitFiFo()
 	{
 		if(masterFIFOArray[i] == NULL)
 		{
-			masterFIFOArray[i] = newFIFO->descriptor;
-			newFIFO->index = i;
-			return newFIFO->descriptor;
+			masterFIFOArray[i] = newFIFO.descriptor;
+			newFIFO.indexW = i;
+			return newFIFO.descriptor;
 		}
 	}
 
-	//if we make it here, it means we have our limit of FIFO
-	//return error.
-	return -1;
+	
+	//Return INVALIDFIFO if no valid FIFO descriptor available
+	return INVALIDFIFO;
 }
 
-
-
-void OS_Write(FIFO f, unsigned int val)
+/*
+  Write will always succeed.
+  If FIFO full, first unread is dropped.
+  
+  TODO: WE AREN'T DEALING WITH f AT ALL!
+	We check if temp = f... that's it
+*/
+void OS_Write(FIFO f, int val)
 {
 	//Handle for the requested FIFO
-	FIFOstruct temp = NULL;
+	FIFOstruct *temp;
+	temp->descriptor = NULL;
+	temp->indexR = NULL;
+	temp->indexW = NULL;
+	temp->data = NULL;
+	
 
 	//Find the FIFO requested.
 	int i;
@@ -78,11 +110,13 @@ void OS_Write(FIFO f, unsigned int val)
 	{
 		temp = masterFIFOArray[i];
 		if(temp->descriptor == f)
-			i = 90;//break the loop;
+			break; //break the loop
+			//i = 90; //should not get here
 	}
 
 	if(temp == NULL)
 		return -1;//could not find FIFO requested.
+		//FIFO is full, dropping this unread FIFO.
 
 	//We use Modular division to create a circular bounded buffer.
 	//When index == FIFOSIZE and you modularly devide it, you get 0. 
@@ -102,18 +136,23 @@ void OS_Write(FIFO f, unsigned int val)
 
 
 
-BOOL OS_Read(FIFO f, unsigned int *val)
+BOOL OS_Read(FIFO f, int *val)
 {
 	//Handle for the requested FIFO
-	FIFOstruct temp = NULL;
+	FIFOstruct temp;
+	temp.descriptor = NULL;
+	temp.indexR = NULL;
+	temp.indexW = NULL;
+	temp.data = NULL;
 
 	//Find the FIFO requested.
 	int i;
 	for(i = 0; i < MAXFIFO -1; i++)
 	{
 		temp = masterFIFOArray[i];
-		if(temp->descriptor == f)
-			i = 90;//break the loop;
+		if(temp.descriptor == f)
+			break;
+			//i = 90;//break the loop;
 	}
 
 	if(temp == NULL)
@@ -121,25 +160,25 @@ BOOL OS_Read(FIFO f, unsigned int *val)
 
 	//We implement the same modular trick for the index
 	//as we did in the writer segment.
-	int indexMod = temp->indexR % FIFOSIZE;
+	int indexMod = temp.indexR % FIFOSIZE;
 	
-	if(temp->indexR == FIFOSIZE)
-		temp->indexR = 1;
+	if(temp.indexR == FIFOSIZE)
+		temp.indexR = 1;
 	else
-		temp->indexR += 1;
+		temp.indexR += 1;
 	
 	//Check to see if FIFO empty
 	int check = 0;
 	for(i = 0; i < MAXFIFO -1; i++)
 	{
-		if(temp->data[i] != NULL)
+		if(temp.data[i] != NULL)
 			check = 1;
 	}
 
 	if(check != 0)
 	{
 		//Set the data *val points too with what is in the buffer.
-		*val = temp->data[indexMod];
+		*val = temp.data[indexMod];
 		return TRUE;
 	}
 	else
