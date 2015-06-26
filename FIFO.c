@@ -1,152 +1,125 @@
-#define MAXFIFO            16     /* max. # of FIFOs supported */
-#define FIFOSIZE           8      /* max. # of data elements per FIFO */
+#include "FIFO.h"
+#include "nios2_ctrl_reg_macros.h"
+#define NULL 0
 
-typedef unsigned int BOOL;
-typedef unsigned int FIFO;
+fifoCount = 100;
 
-//================================================
-//				 STOP INTERRUPTS
-//================================================
-//=================
-//Structs
-
-typedef struct FIFO_t
-{
-	//Holds the FIFO descriptor used to
-	//ID this particular FIFO.
-	FIFO descriptor;
-
-	//The current position of the writer
-	int indexW;
-
-	//The current position of the reader.
-	int indexR;
-
-	//Pointer to the first array element of fifo data.
-	unsigned int data[FIFOSIZE];
-}FIFOstruct;
-
-
-//===================
-//GLOBALS
-FIFOstruct masterFIFOArray[MAXFIFO];
-
+struct fifoStruct fifoArray[MAXFIFO];
 
 FIFO OS_InitFiFo()
 {
-	//Create some elements to build the new FIFO
-	FIFOstruct newFIFO;
+	NIOS2_WRITE_STATUS(0);
 
-	//Make a unique descriptor (the address of the first element.)
-	newFIFO->descriptor = newFIFO->data;
-	newFIFO->indexW = 0;
-	newFIFO->indexR = 0;
+	//Create some elements to build the new FIFO
+	struct fifoStruct newFIFO;
+
+	//Creates an ID for the FIFO
+	newFIFO.descriptor = fifoCount;
+	fifoCount++;
+	
+	//To start the reader and writer at 0
+	newFIFO.indexW = 0;
+	newFIFO.indexR = 0;
 
 	//initialize every element in the buffer to NULL
 	int i;
-	for(i = 0; i < MAXFIFO -1; i++)
+	for(i=0; i < MAXFIFO; i++)
 	{
-		newFIFO->data[i] = NULL;
+		if(fifoArray[i].used == 0)
+			break; 
 	}
 
-	//Parse the master array, find a spot for new FIFO
-	for(i = 0; i < MAXFIFO -1; i++)
-	{
-		if(masterFIFOArray[i] == NULL)
-		{
-			masterFIFOArray[i] = newFIFO->descriptor;
-			newFIFO->index = i;
-			return newFIFO->descriptor;
-		}
-	}
+	fifoArray[i] = newFIFO;
+	//printf("VALUE OF I: %d\n", i);
+	return newFIFO.descriptor;
 
-	//if we make it here, it means we have our limit of FIFO
-	//return error.
-	return -1;
+	NIOS2_WRITE_STATUS(1);
 }
 
 
 
-void OS_Write(FIFO f, unsigned int val)
+
+//===========================
+//		FIFO FUNCTIONS
+//===========================
+void OS_Write(FIFO f, int val)
 {
-	//Handle for the requested FIFO
-	FIFOstruct temp = NULL;
+	NIOS2_WRITE_STATUS(0);
 
 	//Find the FIFO requested.
 	int i;
-	for(i = 0; i < MAXFIFO -1; i++)
+	for(i = 0; i < MAXFIFO; i++)
 	{
-		temp = masterFIFOArray[i];
-		if(temp->descriptor == f)
-			i = 90;//break the loop;
+		if(fifoArray[i].descriptor == f)
+			break; 
 	}
-
-	if(temp == NULL)
-		return -1;//could not find FIFO requested.
 
 	//We use Modular division to create a circular bounded buffer.
-	//When index == FIFOSIZE and you modularly devide it, you get 0. 
-	//Meaning, when our index points to the end of the array, once it is modularly 
-	//devided, it will point back to the very first element 0, else,
-	//any value below the max will remain the same.
-	int indexMod = temp->indexW % FIFOSIZE;
-	temp->data[indexMod] = val;
+	int indexMod = fifoArray[i].indexW % FIFOSIZE;
+	fifoArray[i].data[indexMod] = val;
+	//printf("VALUE Written: [%d][%d]\n", fifoArray[i].data[indexMod], i);
 
-	if(temp->indexW == FIFOSIZE)
-		temp->indexW = 1;
+
+	//Here, to keep our cicle working, we have to reset the index
+	//if it has hit the limit.
+	if(fifoArray[i].indexW == FIFOSIZE)
+		fifoArray[i].indexW = 1;
 	else
-		temp->indexW += 1;
+		fifoArray[i].indexW += 1;
 
-	return;
+	NIOS2_WRITE_STATUS(1);
 }
 
 
 
-BOOL OS_Read(FIFO f, unsigned int *val)
+
+BOOL OS_Read(FIFO f, int *val)
 {
-	//Handle for the requested FIFO
-	FIFOstruct temp = NULL;
+	NIOS2_WRITE_STATUS(0);
 
 	//Find the FIFO requested.
 	int i;
-	for(i = 0; i < MAXFIFO -1; i++)
+	for(i = 0; i < MAXFIFO; i++)
 	{
-		temp = masterFIFOArray[i];
-		if(temp->descriptor == f)
-			i = 90;//break the loop;
+		if(fifoArray[i].descriptor == f)
+			break; 
 	}
 
-	if(temp == NULL)
-		return -1;//could not find FIFO requested.
-
-	//We implement the same modular trick for the index
-	//as we did in the writer segment.
-	int indexMod = temp->indexR % FIFOSIZE;
+	//Set the reader position in the buffer
+	int indexMod = fifoArray[i].indexR % FIFOSIZE;
 	
-	if(temp->indexR == FIFOSIZE)
-		temp->indexR = 1;
+	if(fifoArray[i].indexR == FIFOSIZE)
+		fifoArray[i].indexR = 1;
 	else
-		temp->indexR += 1;
+		fifoArray[i].indexR += 1;
 	
 	//Check to see if FIFO empty
 	int check = 0;
-	for(i = 0; i < MAXFIFO -1; i++)
+	int j;
+	for(j = 0; j < MAXFIFO; j++)
 	{
-		if(temp->data[i] != NULL)
+		//If ANY member is not empty, don't read
+		if(fifoArray[j].data[j] != NULL)
 			check = 1;
 	}
 
-	if(check != 0)
+	if(check == 1)
 	{
 		//Set the data *val points too with what is in the buffer.
-		*val = temp->data[indexMod];
+		*val = fifoArray[i].data[indexMod];
+		//printf("VALUE Read: [%d][%d][%d]\n", fifoArray[i].data[indexMod], i, fifoArray[i].indexW);
+		//printf("VAL: [%d]", *val);
 		return TRUE;
 	}
 	else
 		return FALSE;
+
+	NIOS2_WRITE_STATUS(1);
 }
 
 
-//================================================
-//				 START INTERRUPTS
-//================================================
+
+//===========================
+//		END FIFO FUNCTIONS
+//===========================
+
