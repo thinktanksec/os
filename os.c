@@ -29,7 +29,7 @@ volatile char *HEX7_HEX4 = (char*) 0x10000030;
 //		GLOBALS
 //====================
 int pppIndex = 0;
-int PPP[PPPLen] = {IDLE, 1, 6, 2, IDLE, 3, IDLE};
+int PPP[PPPLen] = {IDLE, 1};
 int PPPMax[];   
 int started = 0;
 FIFO fifo1;
@@ -72,152 +72,15 @@ void idle(void)
 }
 
 
-void aFunction()
-{
-	NIOS2_WRITE_STATUS(0);
-	printf("we are normal funcitons\n");
-	NIOS2_WRITE_STATUS(1);
-
-	OS_Terminate();
-}
-
-int testFunction()
-{
-	OS_Wait(69);
-	printf("I GOT THE SEMAPHORE DAD\n");
-	OS_Signal(69);
-
-	OS_Terminate();
-}
-
-void processFunction(void)
-{
-	OS_InitSem(69, 1);
-
-	OS_Wait(69);
-	while (x == 0);
-	OS_Signal(69);
-
-	NIOS2_WRITE_STATUS(0);
-	printf("WAITING PROCESS DONE\n");
-	NIOS2_WRITE_STATUS(1);
-
-	OS_Terminate();
-}
-
 void processFunction2(void)
 {
 	x = 5;
+	OS_Wait();
 	NIOS2_WRITE_STATUS(0);
 	printf("Swaped X\n");
 	NIOS2_WRITE_STATUS(1);
 
 
-	OS_Terminate();
-}
-
-void in_class1(void){
-	*(HEX3_HEX0) 	 = _0;
-	*(HEX3_HEX0 + 1) 	 = _0;
-	*(HEX3_HEX0 + 2) 	 = _0;
-	
-	//OS_Yield();
-	OS_InitSem(77, 1);
-	
-	OS_Wait(77);
-	while (x == 0){
-		*(HEX3_HEX0) 	 = _1;
-	}
-	OS_Signal(77);
-	NIOS2_WRITE_STATUS(0);
-	printf("CLASS 1 DONE\n");
-	*(HEX3_HEX0) 	 = _9;
-	NIOS2_WRITE_STATUS(1);
-	
-	x = 3;
-	OS_Yield();
-	OS_Terminate();
-
-}
-void in_class2(void){
-
-	*(HEX3_HEX0) 	 = _0;
-	*(HEX3_HEX0 + 1) 	 = _0;
-	*(HEX3_HEX0 + 2) 	 = _0;
-	
-
-	//OS_Yield();
-	OS_Wait(77);
-	while(x == 6);
-	NIOS2_WRITE_STATUS(0);
-	printf("CLASS 2 DONE\n");
-	NIOS2_WRITE_STATUS(1);
-	*(HEX3_HEX0 + 1) 	 = _2;
-	OS_Signal(77);
-	x = 0;
-	OS_Yield();
-	OS_Terminate();
-
-}
-void in_class3(void){
-
-	//OS_Yield();
-	OS_Wait(77);
-	while(x == 3);
-	NIOS2_WRITE_STATUS(0);
-	printf("CLASS 3 DONE\n");
-	NIOS2_WRITE_STATUS(1);
-	*(HEX3_HEX0 + 2) 	 = _3;
-	OS_Signal(77);
-	OS_Yield();
-	OS_Terminate();
-
-}
-void textbook_swap(void){
-	
-
-	MEMORY ptr* = OS_Malloc(1);
-	*ptr = 2;
-	int x = *ptr;
-
-	*(HEX3_HEX0) 	 = _0;
-	*(HEX3_HEX0 + 1) 	 = _0;
-	*(HEX3_HEX0 + 2) 	 = _0;
-	
-	x = 6;
-	NIOS2_WRITE_STATUS(0);
-	printf("SWAPPED BOOK\n");
-	*(HEX3_HEX0 + 2) 	 = _6;
-	NIOS2_WRITE_STATUS(1);
-
-	OS_Yield();
-	OS_Terminate();
-}
-
-void check_sms(void){
-
-	NIOS2_WRITE_STATUS(0);
-	printf("CHECKING OUR TEXTS\n");
-	*(HEX7_HEX4) 	 = _7;
-	NIOS2_WRITE_STATUS(1);
-	OS_Terminate();
-}
-
-void check_email(void){
-
-	NIOS2_WRITE_STATUS(0);
-	printf("CHECKING OUR EMAIL\n");
-	*(HEX7_HEX4) 	 = _8;
-	NIOS2_WRITE_STATUS(1);
-	OS_Terminate();
-}
-
-void check_facebook(void){
-
-	NIOS2_WRITE_STATUS(0);
-	printf("CHECKING OUR FACEBOOK\n");
-	*(HEX7_HEX4) 	 = _9;
-	NIOS2_WRITE_STATUS(1);
 	OS_Terminate();
 }
 
@@ -249,27 +112,6 @@ void blink_pattern(){
 
 }
 
-void phone_call(void){
-
-	NIOS2_WRITE_STATUS(0);
-	printf("OH NO PHONECALL!!\n");
-	
-	blink_pattern();
-
-	
-	NIOS2_WRITE_STATUS(1);
-	OS_Terminate();
-}
-
-//=======================================================
-//			"TEST APPLICATION" functions
-//=======================================================
-
-
-
-
-
-
 
 
 
@@ -281,15 +123,14 @@ void phone_call(void){
 //----------------------------------------------------------------
 void OS_Init()
 {
-	//------------------
-	//		MEMORY
-	//------------------
-	//Setup all the memory structs and zero out the heap
-	OS_InitMemory();
-	//initStacks();
+    //------------------
+    //		MEMORY
+    //------------------
+    //Setup all the memory structs and zero out the heap
+    OS_InitMemory();
 
-	int i;
-	//Set all PCBs to available.
+    int i;
+    //Set all PCBs to available.
     for(i = 0; i < MAXPROCESS; i++)
     	processArray [i].pid = -2;
 
@@ -311,91 +152,10 @@ void OS_Init()
 
 
     setPPP();
-
-	void (*class1)(void);
-	class1 = in_class1;
-	void (*class2)(void);
-	class2 = in_class2;
-	void (*class3)(void);
-	class3 = in_class3;
-	void (*swap) (void);
-	swap = textbook_swap;
 	
-	void (*sms)(void);
-	sms = check_sms;
-	void (*email)(void);
-	email = check_email;
-	void (*facebook)(void);
-	facebook = check_facebook;
-	
-	void (*phone)(void);
-	phone = phone_call;
-	
-	PID proc0 = OS_Create(idle, IDLE, PERIODIC, IDLE);
-	PID proc2 = OS_Create(class1, 1, PERIODIC, 1);
-	PID proc6 = OS_Create(swap, 6, PERIODIC, 6);
-	PID proc3 = OS_Create(class2, 2, PERIODIC, 2);
-	PID proc4 = OS_Create(class3, 3, PERIODIC, 3);
-	
-	PID proc7 = OS_Create(sms, 72, SPORADIC, 7);
-	PID proc8 = OS_Create(email, 82, SPORADIC, 8);
-	PID proc9 = OS_Create(facebook, 92, SPORADIC, 9);
-	
-	PID proc13 = OS_Create(phone, 113, DEVICE, 13);
-	
-	
-	/*
-	void (*testFunction69)(void);
-	testFunction69 = testFunction; //<--- Make your own function to simulate a test program.
+    PID proc0 = OS_Create(idle, IDLE, PERIODIC, IDLE);
+    PID proc2 = OS_Create(class1, 1, PERIODIC, 1);
 
-	void (*processFunction69)(void);
-	processFunction69 = processFunction; 
-
-	void (*processFunction269)(void);
-	processFunction269 = processFunction2; 
-
-	void (*aFunction69)(void);
-	aFunction69 = aFunction;
-	
-	PID proc2 = OS_Create(processFunction, 2, PERIODIC, 0);
-	PID proc3 = OS_Create(processFunction2, 2, PERIODIC, 1);
-	//PID proc4 = OS_Create(foo4, 2, PERIODIC, IDLE);
-	PID proc5 = OS_Create(testFunction, 69, PERIODIC, 2);
-	//PID proc6 = OS_Create(foo4, 420, PERIODIC, 3);
-	//PID proc7 = OS_Create(foo4, 4, PERIODIC, 4);
-	
-	*/
-	
-	//void (*foo6)(void);
-	//foo6 = testFunction; 
-	//PID proc9 = OS_Create(foo6, 69, DEVICE, 20);
-	//PID proc10 = OS_Create(foo6, 69, DEVICE, 30);
-	//PID proc8 = OS_Create(foo, 2, PERIODIC, 6);
-	//PID proc9 = OS_Create(foo, 2, PERIODIC, 7);
-	//PID proc0 = OS_Create(foo, 2, PERIODIC, 8);
-	//PID proc10 = OS_Create(foo, 2, PERIODIC, 9);
-	//PID proc11 = OS_Create(foo, 2, PERIODIC, 10);
-	//PID proc12 = OS_Create(foo, 2, PERIODIC, 11);
-	//PID proc13 = OS_Create(foo, 2, PERIODIC, 12);
-	//PID proc14 = OS_Create(foo, 2, PERIODIC, 13);
-	//PID proc15 = OS_Create(foo, 2, PERIODIC, 14);
-	//PID proc16 = OS_Create(foo, 2, PERIODIC, 15);
-
-
-
-
-	//------------------
-	//		DEVICE
-	//------------------
-	
-
-
-
-	//------------------
-	//		OBJECTS
-	//------------------
-	//OS_InitSem();
-	//OS_InitFiFo();
 }
 
 
@@ -412,21 +172,7 @@ void setPPP()
 
 	//Set the time for each PPP in their arrays. 
 	PPPMax[0] = 3;
-	PPPMax[1] = 8;
-	PPPMax[2] = 16;
-	PPPMax[3] = 12;
-	PPPMax[4] = 7;
-	PPPMax[5] = 9;
-	PPPMax[6] = 3;
-	//PPPMax[7] = 1;
-	//PPPMax[8] = 1;
-	//PPPMax[9] = 1;
-	//PPPMax[10] = 1;
-	//PPPMax[11] = 1;
-	//PPPMax[12] = 1;
-	//PPPMax[13] = 1;
-	//PPPMax[14] = 1;
-	//PPPMax[15] = 1;
+	PPPMax[1] = 1;
 }
 
 
@@ -507,7 +253,7 @@ void OS_Abort()
 void OS_Abort2()
 {
 	NIOS2_WRITE_STATUS(0);
-	printf("I have been fucking reset\n");
+	printf("I have been reset\n");
 	OS_Abort();
 	//NIOS2_RESET();
 }
@@ -518,20 +264,11 @@ void main()
 	NIOS2_WRITE_IENABLE(0x3);  
 	if(started == 0)
 	{
-		////printf("PPPLen: %d\n", PPPLen);
-		//printf("[%d][%d]", processCount, sporadicCount);
 		OS_Init();
 		schedule();
 		started = 1;
 	}
 
-	//int i;
-	//for(i = 0; i < 6; i++)
-		//printf("Process spot %d is: [%d][%d][%d]\n", i, processArray[i].name, processArray[i].level, processArray[i].done);
-	
-	//for(i = 0; i < 3; i++)
-		//printf("Process spot %d is: [%d][%d][%d]\n", i, sporadicQueue[i].name, sporadicQueue[i].level, sporadicQueue[i].done);
-	
 	OS_Start();
 }
 
@@ -551,16 +288,12 @@ int schedule()
 	int indexMod = pppIndex % PPPLen;
 	int tmpName = PPP[indexMod];
 
-	//printf("pppIndex Before [%d]\n", pppIndex);
-	//printf("*OUT [%d]\n", pppIndex);
 	currentProc = findName(tmpName);
 
 	if(pppIndex >= PPPLen)
 		pppIndex = 1;
 	else
 		pppIndex++;
-
-	//printf("pppIndex After [%d]\n", pppIndex);
 
 	if(currentProc.state == TERMINATED){
 		printf("*We Hit a TERM PROC [%d]\n", currentProc.name);
@@ -641,9 +374,6 @@ void the_reset (void)
 void the_exception(void)__attribute__((section(".exceptions")));
 void the_exception(void)
 {
-	//printf("INTERRUPT");
-	//printf("CurrentProc: [%d][%d]\n", currentProc.name, currentProc.state);
-	
 	//Save Registers 
 	if(currentProc.state == RUNNING)
 	{
@@ -682,22 +412,15 @@ void the_exception(void)
 
 		asm("mov %0, r27" : "=r"(stackPointer));
 		currentProc.sp = stackPointer;
-		//MEMORY tempRA = currentProc.registers[31];
 
 		asm("mov %0, r28" : "=r"(currentProc.registers[28]));
 		asm("mov %0, r29" : "=r"(currentProc.registers[29]));
 		asm("mov %0, r30" : "=r"(currentProc.registers[30]));
-		//asm("mov %0, r31" : "=r"(currentProc.registers[31]));
 
-		//if(currentProc.yield == 1)
-			//currentProc.registers[31] = tempRA;
-		//else if(currentProc.procLock == 1)
-			//currentProc.registers[31] = tempRA;
 
 		//printf("Saved Registers");
 		printf("Process [%d] rEA [%#010x]\n", currentProc.name, currentProc.registers[29]);
 		printf("Process [%d] rRA [%#010x]\n", currentProc.name, currentProc.registers[31]);
-		//printf("Process [%d] SP [%#010x]\n", currentProc.name, currentProc.sp);
 
 
 		//Replace process table entry.
@@ -785,7 +508,6 @@ void the_exception(void)
 			//printf("Saved Registers");
 			printf("Process [%d] rEA [%#010x]\n", currentProc.name, currentProc.registers[29]);
 			printf("Process [%d] rRA [%#010x]\n", currentProc.name, currentProc.registers[31]);
-			//printf("Process [%d] SP [%#010x]\n", currentProc.name, currentProc.sp);
 
 			//Replace process table entry.
 			if(currentProc.level == PERIODIC)
@@ -828,7 +550,6 @@ void the_exception(void)
 			}
 		}
 		//else
-			//printf("...");
 
 
 		//NIOS2_WRITE_STATUS(1);
@@ -842,14 +563,8 @@ void the_exception(void)
 
 
 
-	////printf("Found next process: PID %d, State %d\n",currentProc->pid, currentProc->state);
 	if (currentProc.state == WAITING)
 	{
-		//printf("Returning to process %d\n",currentProc->pid);
-		//printf("Resuming Process[%d] for [%d]msec\n", currentProc.name, currentProc.execTime);
-		//printf("Returning to [%d]  rRA [%#010x] rEA[%#010x]\n", currentProc.name, currentProc.registers[31], currentProc.registers[29]);
-
-
 		currentProc.state = RUNNING;
 
 		if(currentProc.yield == 1)
@@ -901,8 +616,6 @@ void the_exception(void)
 
 	if(currentProc.state == NEW)
 	{
-		//printf("Found a new process");
-		//currentProc.state = RUNNING;
 		asm ("movia r2, kernel");
 		asm ("jmp r2");
 	}
@@ -911,8 +624,6 @@ void the_exception(void)
 
 void INTERRUPT_HANDLER()
 {
-	//NIOS2_WRITE_STATUS(0);
-	//Check what type of interrupt it is.
 	int ipending, ea_addr;
 	NIOS2_READ_IPENDING(ipending);
 
@@ -923,13 +634,11 @@ void INTERRUPT_HANDLER()
 	}
 	else if(currentProc.yield == 1)
 	{
-		//printf("A yielded process called this interrupt");
 		stopTimer();
 		schedule();
 	}
 	else if(currentProc.procLock == 1)
 	{
-		//printf("A semaphore called this interrupt");
 		stopTimer();
 		schedule();
 	}
@@ -938,9 +647,6 @@ void INTERRUPT_HANDLER()
 
 void startTimer(int msec) 
 {
-	//printf("Starting Timer...(%d)[%d]\n", msec, currentProc.name);
-	//printf("StartingTimer");
-
 	volatile int * interval_timer_ptr = (int *) 0x10002000;	
 
 	int counter = 50000 * msec;				// 1/(50 MHz) x (0x190000) = 33 msec
